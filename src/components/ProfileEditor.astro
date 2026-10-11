@@ -5,18 +5,64 @@ const { profile } = Astro.props as { profile?: Partial<Profile> };
 const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 ---
 
-<form id="profile-form">
-	<label>Name <input name="name" value={profile?.name ?? ''} required /></label>
-	<label>GitHub <input name="github" value={profile?.github ?? ''} placeholder="username or URL" /></label>
-	<label>Website <input name="website" type="url" value={profile?.website ?? ''} /></label>
-	<label>Blog <input name="blog" type="url" value={profile?.blog ?? ''} /></label>
-	<label>Bio <textarea name="bio" rows="4">{profile?.bio ?? ''}</textarea></label>
-	<label>Skill level <input name="skill_level" value={profile?.skill_level ?? ''} /></label>
-	<label>Languages <input name="languages" value={listValue(profile?.languages)} placeholder="TypeScript, Python" /></label>
-	<label>Tools <input name="tools" value={listValue(profile?.tools)} placeholder="Git, Docker" /></label>
-	<label>Stacks <input name="stacks" value={listValue(profile?.stacks)} placeholder="Astro, Supabase" /></label>
-	<button type="submit">Save profile</button>
-	<p id="profile-status" role="status"></p>
+<form id="profile-form" class="space-y-6 max-w-2xl bg-slate-800/80 p-6 md:p-8 rounded-xl border border-slate-700 shadow-xl">
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+		<div class="space-y-2">
+			<label class="block text-sm font-medium text-slate-200">Name <span class="text-sky-400">*</span></label>
+			<input name="name" class="input-field" value={profile?.name ?? ''} required placeholder="Ada Lovelace" />
+		</div>
+
+		<div class="space-y-2">
+			<label class="block text-sm font-medium text-slate-200">GitHub</label>
+			<input name="github" class="input-field" value={profile?.github ?? ''} placeholder="username or profile URL" />
+		</div>
+	</div>
+
+	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+		<div class="space-y-2">
+			<label class="block text-sm font-medium text-slate-200">Website</label>
+			<input name="website" type="url" class="input-field" value={profile?.website ?? ''} placeholder="https://example.com" />
+		</div>
+
+		<div class="space-y-2">
+			<label class="block text-sm font-medium text-slate-200">Blog</label>
+			<input name="blog" type="url" class="input-field" value={profile?.blog ?? ''} placeholder="https://blog.example.com" />
+		</div>
+	</div>
+
+	<div class="space-y-2">
+		<label class="block text-sm font-medium text-slate-200">Skill Level / Role</label>
+		<input name="skill_level" class="input-field" value={profile?.skill_level ?? ''} placeholder="e.g. Senior Fullstack Engineer" />
+	</div>
+
+	<div class="space-y-2">
+		<label class="block text-sm font-medium text-slate-200">Bio</label>
+		<textarea name="bio" rows="4" class="input-field" placeholder="Tell us about yourself and what you're working on...">{profile?.bio ?? ''}</textarea>
+	</div>
+
+	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+		<div class="space-y-2">
+			<label class="block text-sm font-medium text-slate-200">Languages</label>
+			<input name="languages" class="input-field" value={listValue(profile?.languages)} placeholder="TypeScript, Python, Rust" />
+		</div>
+
+		<div class="space-y-2">
+			<label class="block text-sm font-medium text-slate-200">Tools</label>
+			<input name="tools" class="input-field" value={listValue(profile?.tools)} placeholder="Git, Docker, VS Code" />
+		</div>
+
+		<div class="space-y-2">
+			<label class="block text-sm font-medium text-slate-200">Stacks</label>
+			<input name="stacks" class="input-field" value={listValue(profile?.stacks)} placeholder="Astro, Supabase, React" />
+		</div>
+	</div>
+
+	<div class="pt-4 flex items-center justify-between border-t border-slate-700/80">
+		<button type="submit" class="btn-primary">
+			Save Profile
+		</button>
+		<p id="profile-status" class="text-sm font-medium text-sky-400" role="status"></p>
+	</div>
 </form>
 
 <script>
@@ -48,6 +94,7 @@ const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 
 		form.addEventListener('submit', async (event) => {
 			event.preventDefault();
+			status.textContent = 'Saving profile...';
 			const { data: { session } } = await client.auth.getSession();
 			if (!session?.user) {
 				window.location.href = `${base}login/`;
@@ -55,7 +102,7 @@ const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 			}
 			const values = new FormData(form);
 			const list = (name: string) => String(values.get(name) ?? '').split(',').map((item) => item.trim()).filter(Boolean);
-			const profile = {
+			const profileData = {
 				id: session.user.id,
 				name: String(values.get('name') ?? '').trim(),
 				github: String(values.get('github') ?? '').trim(),
@@ -68,33 +115,15 @@ const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 				stacks: list('stacks'),
 				updated_at: new Date().toISOString(),
 			};
-			try {
-				const response = await fetch(`${base}api/update-profile`, {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${session.access_token}`,
-					},
-					body: JSON.stringify(profile),
-				});
-				if (response.ok) {
-					status.textContent = 'Profile saved.';
-					return;
-				}
-				if (response.status !== 404 && response.status !== 405) {
-					status.textContent = 'Could not save profile.';
-					return;
-				}
-			} catch {}
-			const { error } = await client.from('profiles').upsert(profile);
-			status.textContent = error ? error.message : 'Profile saved.';
+
+			const { error } = await client.from('profiles').upsert(profileData);
+			if (error) {
+				status.textContent = error.message;
+				status.className = 'text-sm font-medium text-rose-400';
+			} else {
+				status.textContent = 'Profile saved successfully!';
+				status.className = 'text-sm font-medium text-emerald-400';
+			}
 		});
 	}
 </script>
-
-<style>
-	form { display: grid; gap: 1rem; max-width: 560px; }
-	label { display: grid; gap: 0.35rem; }
-	input, textarea { box-sizing: border-box; width: 100%; padding: 0.65rem; border: 1px solid #aab9b4; border-radius: 4px; font: inherit; }
-	button { justify-self: start; padding: 0.65rem 1rem; border: 0; border-radius: 4px; background: #145b50; color: white; font: inherit; cursor: pointer; }
-</style>
