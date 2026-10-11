@@ -1,43 +1,39 @@
-# Astro Starter Kit: Minimal
+# Dev Portal
 
-```sh
-npm create astro@latest -- --template minimal
-```
+Dev Portal is a static Astro site backed by Supabase Auth and Postgres.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Local development
 
-## 🚀 Project Structure
+1. Copy `.env.example` to `.env` and set `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` from Supabase project settings.
+2. Install packages with `npm ci`.
+3. Run the schema migration using the Supabase CLI:
 
-Inside of your Astro project, you'll see the following folders and files:
+	```sh
+	npx --yes supabase@latest login
+	npx --yes supabase@latest link --project-ref YOUR_PROJECT_REF
+	npx --yes supabase@latest db push
+	```
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+	The migration creates `public.profiles` and applies its RLS policies. It is also applied automatically by the deployment workflow.
+4. Start the site with `npm run dev`.
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## GitHub Pages deployment
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+The workflow deploys on pushes to `main` or `master`. In the repository, set these under **Settings > Secrets and variables > Actions**:
 
-Any static assets, like images, can be placed in the `public/` directory.
+Repository variables:
 
-## 🧞 Commands
+- `PUBLIC_SUPABASE_URL`
+- `PUBLIC_SUPABASE_ANON_KEY`
+- `PUBLIC_GITHUB_REDIRECT_URL` (optional; defaults to the Pages callback URL)
 
-All commands are run from the root of the project, from a terminal:
+Repository secrets:
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+- `SUPABASE_ACCESS_TOKEN` (a Supabase personal access token)
+- `SUPABASE_DB_PASSWORD` (the database password for the project)
 
-## 👀 Want to learn more?
+Enable **Settings > Pages > Build and deployment > GitHub Actions**. The workflow applies pending Supabase migrations before building the static site.
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## GitHub OAuth
+
+Enable GitHub under **Supabase Dashboard > Authentication > Sign In / Providers** and add the GitHub OAuth application's client ID and secret there. Set the GitHub OAuth application's callback URL to the Supabase Auth callback shown in that provider's settings. Add `https://gtref.github.io/dev-portal/callback` to Supabase's allowed redirect URLs.

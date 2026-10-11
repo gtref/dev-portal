@@ -1,0 +1,42 @@
+---
+import { createClient, isSupabaseConfigured, type Profile } from '../../lib/supabase';
+
+export async function getStaticPaths() {
+	if (!isSupabaseConfigured) return [];
+	const { data } = await createClient().from('profiles').select('id');
+	return (data ?? []).map(({ id }) => ({ params: { id } }));
+}
+
+const profileId = Astro.params.id;
+const { data } = isSupabaseConfigured
+	? await createClient().from('profiles').select('*').eq('id', profileId).maybeSingle()
+	: { data: null };
+const profile = data as Profile | null;
+const external = (url?: string | null) => url ? (url.startsWith('http') ? url : `https://${url}`) : null;
+const githubUrl = profile?.github
+	? (profile.github.startsWith('http') ? profile.github : `https://github.com/${profile.github.replace(/^@/, '')}`)
+	: null;
+---
+<!doctype html>
+<html lang="en">
+	<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>{profile?.name ?? 'Developer'} | Dev Portal</title></head>
+	<body>
+		<main>
+			<p><a href={import.meta.env.BASE_URL}>Dev Portal</a></p>
+			{profile ? (
+				<article>
+					<h1>{profile.name || 'Developer'}</h1>
+					<p>{profile.skill_level}</p>
+					<p>{profile.bio}</p>
+					{githubUrl && <p><a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a></p>}
+					{external(profile.website) && <p><a href={external(profile.website)!} target="_blank" rel="noreferrer">Website</a></p>}
+					{external(profile.blog) && <p><a href={external(profile.blog)!} target="_blank" rel="noreferrer">Blog</a></p>}
+				</article>
+			) : <p>Profile not found.</p>}
+		</main>
+	</body>
+</html>
+
+<style>
+	body { max-width: 760px; margin: 2rem auto; padding: 1rem; font-family: system-ui, sans-serif; }
+</style>

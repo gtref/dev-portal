@@ -1,0 +1,22 @@
+---
+import type { Profile } from '../lib/supabase';
+
+const { profile } = Astro.props as { profile: Partial<Profile> };
+const github = profile.github?.trim();
+const githubUrl = github
+	? (github.startsWith('http') ? github : `https://github.com/${github.replace(/^@/, '')}`)
+	: null;
+---
+
+<article class="profile-card">
+	<h3>{profile.name || 'Developer'}</h3>
+	<p>{profile.skill_level || 'Skill level not specified'}</p>
+	{githubUrl && <a href={githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
+	<a href={`${import.meta.env.BASE_URL}u/${profile.id}/`}>View profile</a>
+</article>
+
+<style>
+	.profile-card { display: grid; gap: 0.5rem; align-content: start; padding: 1rem; border: 1px solid #d5dfdc; border-radius: 6px; }
+	h3, p { margin: 0; }
+	.profile-card a { color: #145b50; }
+</style>

@@ -1,0 +1,57 @@
+---
+---
+<!doctype html>
+<html lang="en">
+	<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>Developer profile | Dev Portal</title></head>
+	<body>
+		<main>
+			<p><a href={import.meta.env.BASE_URL}>Dev Portal</a></p>
+			<article id="profile-view"><p role="status">Loading profile...</p></article>
+		</main>
+	</body>
+</html>
+
+<script>
+	import { createClient, isSupabaseConfigured } from '../lib/supabase';
+
+	const view = document.querySelector<HTMLElement>('#profile-view');
+	const path = window.location.pathname.replace(import.meta.env.BASE_URL, '');
+	const profileId = path.split('/')[1];
+
+	if (view) {
+		if (!isSupabaseConfigured || !profileId) {
+			view.textContent = 'Profile not found.';
+		} else {
+			const { data: profile, error } = await createClient().from('profiles').select('*').eq('id', profileId).maybeSingle();
+			if (error) {
+				view.textContent = error.message;
+			} else if (!profile) {
+				view.textContent = 'Profile not found.';
+			} else {
+				const heading = document.createElement('h1');
+				heading.textContent = profile.name || 'Developer';
+				const level = document.createElement('p');
+				level.textContent = profile.skill_level || '';
+				const bio = document.createElement('p');
+				bio.textContent = profile.bio || '';
+				view.replaceChildren(heading, level, bio);
+
+				const addLink = (label: string, href: string) => {
+					const link = document.createElement('a');
+					link.textContent = label;
+					link.href = href;
+					link.target = '_blank';
+					link.rel = 'noreferrer';
+					view.append(document.createElement('br'), link);
+				};
+				if (profile.github) addLink('GitHub', profile.github.startsWith('http') ? profile.github : `https://github.com/${profile.github.replace(/^@/, '')}`);
+				if (profile.website) addLink('Website', profile.website.startsWith('http') ? profile.website : `https://${profile.website}`);
+				if (profile.blog) addLink('Blog', profile.blog.startsWith('http') ? profile.blog : `https://${profile.blog}`);
+			}
+		}
+	}
+</script>
+
+<style>
+	body { max-width: 760px; margin: 2rem auto; padding: 1rem; font-family: system-ui, sans-serif; }
+</style>

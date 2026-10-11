@@ -1,0 +1,54 @@
+---
+import ProfileCard from '../components/ProfileCard.astro';
+import { createClient, isSupabaseConfigured } from '../lib/supabase';
+
+	const { data, error } = isSupabaseConfigured
+	? await createClient().from('profiles').select('id, name, github, skill_level').order('name')
+	: { data: [], error: null };
+const profiles = data ?? [];
+const initialStatus = error?.message ?? (!isSupabaseConfigured ? 'Supabase is not configured for this deployment.' : profiles.length === 0 ? 'No profiles found.' : '');
+---
+<!doctype html>
+<html lang="en">
+	<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>Explore | Dev Portal</title></head>
+	<body>
+		<main>
+			<p><a href={import.meta.env.BASE_URL}>Dev Portal</a></p>
+			<h1>Explore developers</h1>
+			<div id="all-profiles" class="profiles">{profiles.map((profile) => <ProfileCard profile={profile} />)}</div>
+			<p id="explore-status" role="status">{initialStatus}</p>
+		</main>
+	</body>
+</html>
+
+<script>
+	import { createClient, isSupabaseConfigured } from '../lib/supabase';
+
+	if (isSupabaseConfigured) {
+		const container = document.querySelector<HTMLElement>('#all-profiles');
+		const status = document.querySelector<HTMLElement>('#explore-status');
+		const { data, error } = await createClient().from('profiles').select('id, name, github, skill_level').order('name');
+		if (status) status.textContent = error?.message ?? ((data?.length ?? 0) === 0 ? 'No profiles found.' : '');
+		if (container && data) {
+			container.replaceChildren();
+			for (const profile of data) {
+				const card = document.createElement('article');
+				card.className = 'profile-card';
+				const name = document.createElement('h3');
+				name.textContent = profile.name || 'Developer';
+				const level = document.createElement('p');
+				level.textContent = profile.skill_level || 'Skill level not specified';
+				const link = document.createElement('a');
+				link.href = `${import.meta.env.BASE_URL}u/${profile.id}/`;
+				link.textContent = 'View profile';
+				card.append(name, level, link);
+				container.append(card);
+			}
+		}
+	}
+</script>
+
+<style>
+	body { max-width: 960px; margin: 2rem auto; padding: 1rem; font-family: system-ui, sans-serif; }
+	.profiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+</style>

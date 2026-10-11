@@ -1,0 +1,100 @@
+---
+import type { Profile } from '../lib/supabase';
+
+const { profile } = Astro.props as { profile?: Partial<Profile> };
+const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
+---
+
+<form id="profile-form">
+	<label>Name <input name="name" value={profile?.name ?? ''} required /></label>
+	<label>GitHub <input name="github" value={profile?.github ?? ''} placeholder="username or URL" /></label>
+	<label>Website <input name="website" type="url" value={profile?.website ?? ''} /></label>
+	<label>Blog <input name="blog" type="url" value={profile?.blog ?? ''} /></label>
+	<label>Bio <textarea name="bio" rows="4">{profile?.bio ?? ''}</textarea></label>
+	<label>Skill level <input name="skill_level" value={profile?.skill_level ?? ''} /></label>
+	<label>Languages <input name="languages" value={listValue(profile?.languages)} placeholder="TypeScript, Python" /></label>
+	<label>Tools <input name="tools" value={listValue(profile?.tools)} placeholder="Git, Docker" /></label>
+	<label>Stacks <input name="stacks" value={listValue(profile?.stacks)} placeholder="Astro, Supabase" /></label>
+	<button type="submit">Save profile</button>
+	<p id="profile-status" role="status"></p>
+</form>
+
+<script>
+	import { createClient } from '../lib/supabase';
+
+	const form = document.querySelector<HTMLFormElement>('#profile-form');
+	const status = document.querySelector<HTMLElement>('#profile-status');
+	const client = createClient();
+	const base = import.meta.env.BASE_URL;
+
+	if (form && status) {
+		const { data: { user } } = await client.auth.getUser();
+		if (!user) {
+			window.location.href = `${base}login/`;
+		} else {
+			const { data, error } = await client.from('profiles').select('*').eq('id', user.id).maybeSingle();
+			if (error) {
+				status.textContent = error.message;
+			} else if (data) {
+				for (const field of ['name', 'github', 'website', 'blog', 'bio', 'skill_level', 'languages', 'tools', 'stacks']) {
+					const input = form.elements.namedItem(field);
+					if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+						const value = data[field];
+						input.value = Array.isArray(value) ? value.join(', ') : value ?? '';
+					}
+				}
+			}
+		}
+
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const { data: { session } } = await client.auth.getSession();
+			if (!session?.user) {
+				window.location.href = `${base}login/`;
+				return;
+			}
+			const values = new FormData(form);
+			const list = (name: string) => String(values.get(name) ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+			const profile = {
+				id: session.user.id,
+				name: String(values.get('name') ?? '').trim(),
+				github: String(values.get('github') ?? '').trim(),
+				website: String(values.get('website') ?? '').trim(),
+				blog: String(values.get('blog') ?? '').trim(),
+				bio: String(values.get('bio') ?? '').trim(),
+				skill_level: String(values.get('skill_level') ?? '').trim(),
+				languages: list('languages'),
+				tools: list('tools'),
+				stacks: list('stacks'),
+				updated_at: new Date().toISOString(),
+			};
+			try {
+				const response = await fetch(`${base}api/update-profile`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${session.access_token}`,
+					},
+					body: JSON.stringify(profile),
+				});
+				if (response.ok) {
+					status.textContent = 'Profile saved.';
+					return;
+				}
+				if (response.status !== 404 && response.status !== 405) {
+					status.textContent = 'Could not save profile.';
+					return;
+				}
+			} catch {}
+			const { error } = await client.from('profiles').upsert(profile);
+			status.textContent = error ? error.message : 'Profile saved.';
+		});
+	}
+</script>
+
+<style>
+	form { display: grid; gap: 1rem; max-width: 560px; }
+	label { display: grid; gap: 0.35rem; }
+	input, textarea { box-sizing: border-box; width: 100%; padding: 0.65rem; border: 1px solid #aab9b4; border-radius: 4px; font: inherit; }
+	button { justify-self: start; padding: 0.65rem 1rem; border: 0; border-radius: 4px; background: #145b50; color: white; font: inherit; cursor: pointer; }
+</style>
