@@ -2,9 +2,13 @@
 ---
 <!doctype html>
 <html lang="en">
-	<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>Signing in | Dev Portal</title></head>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>Signing in | Dev Portal</title>
+	</head>
 	<body>
-		<main>
+		<main class="callback-container">
 			<h1>Signing in</h1>
 			<p id="auth-status" role="status">Completing GitHub sign-in...</p>
 		</main>
@@ -17,13 +21,32 @@
 	const client = createClient();
 	const status = document.querySelector<HTMLElement>('#auth-status');
 	const base = import.meta.env.BASE_URL;
-	const { data: { session }, error } = await client.auth.getSession();
 
-	if (error || !session) {
-		if (status) status.textContent = error?.message ?? 'Could not complete sign-in.';
-	} else {
-		window.location.replace(`${base}dashboard/`);
+	async function handleCallback() {
+		try {
+			const url = new URL(window.location.href);
+			const code = url.searchParams.get('code');
+
+			if (code) {
+				const { error } = await client.auth.exchangeCodeForSession(code);
+				if (error) {
+					if (status) status.textContent = `Error completing sign in: ${error.message}`;
+					return;
+				}
+			}
+
+			const { data: { session }, error: sessionError } = await client.auth.getSession();
+			if (sessionError || !session) {
+				if (status) status.textContent = sessionError?.message ?? 'Could not complete sign-in. Please try logging in again.';
+			} else {
+				window.location.replace(`${base}dashboard/`);
+			}
+		} catch (err: any) {
+			if (status) status.textContent = err?.message ?? 'An unexpected error occurred during authentication.';
+		}
 	}
+
+	handleCallback();
 </script>
 
 <style>
