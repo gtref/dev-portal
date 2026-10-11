@@ -16,7 +16,8 @@
 
 	const view = document.querySelector<HTMLElement>('#profile-view');
 	const path = window.location.pathname.replace(import.meta.env.BASE_URL, '');
-	const profileId = path.split('/')[1];
+	const segments = path.split('/').filter(Boolean);
+	const profileId = segments[0] === 'u' ? segments[1] : undefined;
 
 	if (view) {
 		if (!isSupabaseConfigured || !profileId) {
