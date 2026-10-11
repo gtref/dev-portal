@@ -82,7 +82,11 @@ import '../styles/global.css';
 		const redirectTo = import.meta.env.PUBLIC_GITHUB_REDIRECT_URL || new URL(redirectPath, window.location.origin).toString();
 		const { error } = await client.auth.signInWithOAuth({ provider: 'github', options: { redirectTo } });
 		if (error && status) {
-			status.textContent = error.message;
+			if (error.message.includes('validation_failed') || error.message.includes('not enabled') || (error as any).status === 400) {
+				status.textContent = 'GitHub OAuth is not enabled in your Supabase Dashboard. Go to Authentication > Providers > GitHub in Supabase and enable it with your GitHub Client ID & Secret.';
+			} else {
+				status.textContent = error.message;
+			}
 			status.className = 'text-sm font-medium text-center text-rose-400 min-h-[1.25rem]';
 		}
 	});
