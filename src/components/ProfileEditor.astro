@@ -5,71 +5,88 @@ const { profile } = Astro.props as { profile?: Partial<Profile> };
 const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 ---
 
-<form id="profile-form" class="space-y-6 max-w-2xl bg-slate-800/80 p-6 md:p-8 rounded-xl border border-slate-700 shadow-xl">
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-		<div class="space-y-2">
-			<label class="block text-sm font-medium text-slate-200">Name <span class="text-sky-400">*</span></label>
-			<input name="name" class="input-field" value={profile?.name ?? ''} required placeholder="Ada Lovelace" />
+<div class="space-y-8">
+	<form id="profile-form" class="space-y-6 bg-slate-800/80 p-6 md:p-8 rounded-xl border border-slate-700 shadow-xl">
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200">Name <span class="text-sky-400">*</span></label>
+				<input name="name" class="input-field" value={profile?.name ?? ''} required placeholder="Ada Lovelace" />
+			</div>
+
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200">GitHub</label>
+				<input name="github" class="input-field" value={profile?.github ?? ''} placeholder="username or profile URL" />
+			</div>
+		</div>
+
+		<!-- Checkbox to pull most active repos -->
+		<div class="p-4 rounded-lg bg-slate-900/60 border border-slate-700/80 flex items-center gap-3">
+			<input type="checkbox" id="pull_github_repos" name="pull_github_repos" class="w-4 h-4 text-sky-500 rounded border-slate-600 bg-slate-800 focus:ring-sky-400" checked={profile?.pull_github_repos ?? true} />
+			<label for="pull_github_repos" class="text-sm font-medium text-slate-200 cursor-pointer">
+				Pull most active repos from GitHub
+				<span class="block text-xs font-normal text-slate-400">Display top 3 projects on a podium and extended repository statistics on your public profile.</span>
+			</label>
+		</div>
+
+		<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200">Website</label>
+				<input name="website" type="url" class="input-field" value={profile?.website ?? ''} placeholder="https://example.com" />
+			</div>
+
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200">Blog</label>
+				<input name="blog" type="url" class="input-field" value={profile?.blog ?? ''} placeholder="https://blog.example.com" />
+			</div>
 		</div>
 
 		<div class="space-y-2">
-			<label class="block text-sm font-medium text-slate-200">GitHub</label>
-			<input name="github" class="input-field" value={profile?.github ?? ''} placeholder="username or profile URL" />
-		</div>
-	</div>
-
-	<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-		<div class="space-y-2">
-			<label class="block text-sm font-medium text-slate-200">Website</label>
-			<input name="website" type="url" class="input-field" value={profile?.website ?? ''} placeholder="https://example.com" />
+			<label class="block text-sm font-medium text-slate-200">Skill Level / Role</label>
+			<input name="skill_level" class="input-field" value={profile?.skill_level ?? ''} placeholder="e.g. Senior Fullstack Engineer" />
 		</div>
 
 		<div class="space-y-2">
-			<label class="block text-sm font-medium text-slate-200">Blog</label>
-			<input name="blog" type="url" class="input-field" value={profile?.blog ?? ''} placeholder="https://blog.example.com" />
-		</div>
-	</div>
-
-	<div class="space-y-2">
-		<label class="block text-sm font-medium text-slate-200">Skill Level / Role</label>
-		<input name="skill_level" class="input-field" value={profile?.skill_level ?? ''} placeholder="e.g. Senior Fullstack Engineer" />
-	</div>
-
-	<div class="space-y-2">
-		<label class="block text-sm font-medium text-slate-200">Bio</label>
-		<textarea name="bio" rows="4" class="input-field" placeholder="Tell us about yourself and what you're working on...">{profile?.bio ?? ''}</textarea>
-	</div>
-
-	<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-		<div class="space-y-2">
-			<label class="block text-sm font-medium text-slate-200">Languages</label>
-			<input name="languages" class="input-field" value={listValue(profile?.languages)} placeholder="TypeScript, Python, Rust" />
+			<label class="block text-sm font-medium text-slate-200">Bio</label>
+			<textarea name="bio" rows="4" class="input-field" placeholder="Tell us about yourself and what you're working on...">{profile?.bio ?? ''}</textarea>
 		</div>
 
-		<div class="space-y-2">
-			<label class="block text-sm font-medium text-slate-200">Tools</label>
-			<input name="tools" class="input-field" value={listValue(profile?.tools)} placeholder="Git, Docker, VS Code" />
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200">Languages</label>
+				<input name="languages" class="input-field" value={listValue(profile?.languages)} placeholder="TypeScript, Python, Rust" />
+			</div>
+
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200">Tools</label>
+				<input name="tools" class="input-field" value={listValue(profile?.tools)} placeholder="Git, Docker, VS Code" />
+			</div>
+
+			<div class="space-y-2">
+				<label class="block text-sm font-medium text-slate-200">Stacks</label>
+				<input name="stacks" class="input-field" value={listValue(profile?.stacks)} placeholder="Astro, Supabase, React" />
+			</div>
 		</div>
 
-		<div class="space-y-2">
-			<label class="block text-sm font-medium text-slate-200">Stacks</label>
-			<input name="stacks" class="input-field" value={listValue(profile?.stacks)} placeholder="Astro, Supabase, React" />
+		<div class="pt-4 flex flex-wrap items-center justify-between gap-4 border-t border-slate-700/80">
+			<div class="flex items-center gap-3">
+				<button type="submit" class="btn-primary">
+					Save Profile
+				</button>
+				<a id="view-my-profile" href="#" target="_blank" class="btn-secondary text-sm hidden">
+					View Public Profile ↗
+				</a>
+			</div>
+			<p id="profile-status" class="text-sm font-medium text-sky-400" role="status"></p>
 		</div>
-	</div>
-
-	<div class="pt-4 flex items-center justify-between border-t border-slate-700/80">
-		<button type="submit" class="btn-primary">
-			Save Profile
-		</button>
-		<p id="profile-status" class="text-sm font-medium text-sky-400" role="status"></p>
-	</div>
-</form>
+	</form>
+</div>
 
 <script>
 	import { createClient } from '../lib/supabase';
 
 	const form = document.querySelector<HTMLFormElement>('#profile-form');
 	const status = document.querySelector<HTMLElement>('#profile-status');
+	const viewProfileLink = document.querySelector<HTMLAnchorElement>('#view-my-profile');
 	const client = createClient();
 	const base = import.meta.env.BASE_URL;
 
@@ -78,6 +95,11 @@ const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 		if (!user) {
 			window.location.href = `${base}login/`;
 		} else {
+			if (viewProfileLink) {
+				viewProfileLink.href = `${base}u/${user.id}/`;
+				viewProfileLink.classList.remove('hidden');
+			}
+
 			const { data, error } = await client.from('profiles').select('*').eq('id', user.id).maybeSingle();
 			if (error) {
 				status.textContent = error.message;
@@ -88,6 +110,10 @@ const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 						const value = data[field];
 						input.value = Array.isArray(value) ? value.join(', ') : value ?? '';
 					}
+				}
+				const pullCheckbox = form.elements.namedItem('pull_github_repos') as HTMLInputElement;
+				if (pullCheckbox) {
+					pullCheckbox.checked = data.pull_github_repos !== false;
 				}
 			}
 		}
@@ -110,6 +136,7 @@ const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 				blog: String(values.get('blog') ?? '').trim(),
 				bio: String(values.get('bio') ?? '').trim(),
 				skill_level: String(values.get('skill_level') ?? '').trim(),
+				pull_github_repos: values.get('pull_github_repos') === 'on',
 				languages: list('languages'),
 				tools: list('tools'),
 				stacks: list('stacks'),
@@ -121,8 +148,11 @@ const listValue = (value?: string[] | null) => value?.join(', ') ?? '';
 				status.textContent = error.message;
 				status.className = 'text-sm font-medium text-rose-400';
 			} else {
-				status.textContent = 'Profile saved successfully!';
+				status.textContent = 'Profile saved successfully! Redirecting to preview...';
 				status.className = 'text-sm font-medium text-emerald-400';
+				setTimeout(() => {
+					window.location.href = `${base}u/${session.user.id}/`;
+				}, 1000);
 			}
 		});
 	}

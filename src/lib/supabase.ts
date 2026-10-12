@@ -11,6 +11,7 @@ export type Profile = {
 	tools: string[] | null;
 	stacks: string[] | null;
 	skill_level: string | null;
+	pull_github_repos?: boolean | null;
 	updated_at?: string;
 };
 

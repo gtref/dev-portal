@@ -1,0 +1,64 @@
+---
+---
+<nav id="header-nav" aria-label="Main navigation" class="flex items-center gap-4">
+	<a href={`${import.meta.env.BASE_URL}explore/`} class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Explore</a>
+
+	<!-- Unauthenticated Navigation -->
+	<div id="unauth-nav" class="flex items-center gap-3">
+		<a href={`${import.meta.env.BASE_URL}login/`} class="btn-secondary text-sm">Log in</a>
+		<a href={`${import.meta.env.BASE_URL}signup/`} class="btn-primary text-sm">Sign up</a>
+	</div>
+
+	<!-- Authenticated Navigation (GitHub avatar + Sign Out) -->
+	<div id="auth-nav" class="hidden flex items-center gap-3">
+		<a href={`${import.meta.env.BASE_URL}dashboard/`} class="flex items-center gap-2 text-slate-200 hover:text-white text-sm font-medium bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/80 transition-all">
+			<img id="user-avatar" class="w-6 h-6 rounded-full border border-slate-600 bg-slate-700 hidden" alt="GitHub Avatar" />
+			<span id="user-display-name">Dashboard</span>
+		</a>
+		<button id="signout-btn" class="btn-secondary text-sm py-1.5 px-3">Sign out</button>
+	</div>
+</nav>
+
+<script>
+	import { createClient, isSupabaseConfigured } from '../lib/supabase';
+
+	if (isSupabaseConfigured) {
+		const client = createClient();
+		const unauthNav = document.querySelector<HTMLElement>('#unauth-nav');
+		const authNav = document.querySelector<HTMLElement>('#auth-nav');
+		const userAvatar = document.querySelector<HTMLImageElement>('#user-avatar');
+		const userDisplayName = document.querySelector<HTMLElement>('#user-display-name');
+		const signoutBtn = document.querySelector<HTMLButtonElement>('#signout-btn');
+
+		async function initAuthHeader() {
+			const { data: { user } } = await client.auth.getUser();
+			if (user) {
+				unauthNav?.classList.add('hidden');
+				authNav?.classList.remove('hidden');
+				authNav?.classList.add('flex');
+
+				const metadata = user.user_metadata || {};
+				const avatarUrl = metadata.avatar_url || metadata.picture;
+				const name = metadata.full_name || metadata.name || user.email?.split('@')[0] || 'Dashboard';
+
+				if (userAvatar && avatarUrl) {
+					userAvatar.src = avatarUrl;
+					userAvatar.classList.remove('hidden');
+				}
+				if (userDisplayName) {
+					userDisplayName.textContent = name;
+				}
+			} else {
+				unauthNav?.classList.remove('hidden');
+				authNav?.classList.add('hidden');
+			}
+		}
+
+		signoutBtn?.addEventListener('click', async () => {
+			await client.auth.signOut();
+			window.location.href = import.meta.env.BASE_URL;
+		});
+
+		initAuthHeader();
+	}
+</script>
