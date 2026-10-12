@@ -1,5 +1,6 @@
 ---
 import { createClient, isSupabaseConfigured, type Profile } from '../../lib/supabase';
+import HeaderNav from '../../components/HeaderNav.astro';
 import '../../styles/global.css';
 
 export async function getStaticPaths() {
@@ -14,9 +15,29 @@ const { data } = isSupabaseConfigured
 	: { data: null };
 const profile = data as Profile | null;
 const external = (url?: string | null) => url ? (url.startsWith('http') ? url : `https://${url}`) : null;
-const githubUrl = profile?.github
-	? (profile.github.startsWith('http') ? profile.github : `https://github.com/${profile.github.replace(/^@/, '')}`)
-	: null;
+const githubUsername = profile?.github ? profile.github.replace(/^https?:\/\/github\.com\//i, '').replace(/^@/, '').split('/')[0] : null;
+const githubUrl = githubUsername ? `https://github.com/${githubUsername}` : null;
+
+// Server-side fetch repos if enabled
+let githubRepos: any[] = [];
+if (profile && profile.pull_github_repos !== false && githubUsername) {
+	try {
+		const res = await fetch(`https://api.github.com/users/${githubUsername}/repos?sort=updated&per_page=12`, {
+			headers: { 'User-Agent': 'DevPortal-AstroApp' }
+		});
+		if (res.ok) {
+			const repos = await res.json();
+			if (Array.isArray(repos)) {
+				githubRepos = repos
+					.filter((r: any) => !r.fork)
+					.sort((a: any, b: any) => (b.stargazers_count + b.forks_count * 2) - (a.stargazers_count + a.forks_count * 2));
+			}
+		}
+	} catch (e) {}
+}
+
+const topThree = githubRepos.slice(0, 3);
+const remainingRepos = githubRepos.slice(3);
 ---
 <!doctype html>
 <html lang="en">
@@ -31,79 +52,177 @@ const githubUrl = profile?.github
 				<a href={import.meta.env.BASE_URL} class="text-xl font-bold bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">
 					Dev Portal
 				</a>
-				<nav aria-label="Main navigation" class="flex items-center gap-6">
-					<a href={`${import.meta.env.BASE_URL}explore/`} class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Explore</a>
-					<a href={`${import.meta.env.BASE_URL}login/`} class="btn-secondary text-sm">Log in</a>
-				</nav>
+				<HeaderNav />
 			</div>
 		</header>
 
-		<main class="flex-grow max-w-4xl w-full mx-auto px-4 py-10">
-			<div id="profile-container" data-initial-found={profile ? "true" : "false"}>
+		<main class="flex-grow max-w-5xl w-full mx-auto px-4 py-10 space-y-10">
+			<div id="profile-container" data-initial-found={profile ? "true" : "false"} data-github-username={githubUsername ?? ''}>
 				{profile ? (
-					<article class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8">
-						<div class="space-y-3 border-b border-slate-700 pb-6">
-							<div class="flex flex-wrap items-center justify-between gap-4">
-								<h1 class="text-3xl sm:text-4xl font-extrabold text-white">{profile.name || 'Developer'}</h1>
-								{profile.skill_level && <span class="badge text-sm py-1 px-3">{profile.skill_level}</span>}
+					<div class="space-y-10">
+						<!-- Profile Card -->
+						<article class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8">
+							<div class="space-y-3 border-b border-slate-700 pb-6">
+								<div class="flex flex-wrap items-center justify-between gap-4">
+									<h1 class="text-3xl sm:text-4xl font-extrabold text-white">{profile.name || 'Developer'}</h1>
+									{profile.skill_level && <span class="badge text-sm py-1 px-3">{profile.skill_level}</span>}
+								</div>
+								{profile.bio && <p class="text-slate-300 text-lg leading-relaxed">{profile.bio}</p>}
 							</div>
-							{profile.bio && <p class="text-slate-300 text-lg leading-relaxed">{profile.bio}</p>}
-						</div>
 
-						<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-							{profile.languages && profile.languages.length > 0 && (
-								<div class="space-y-2">
-									<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Languages</h3>
-									<div class="flex flex-wrap gap-2">
-										{profile.languages.map((lang) => (
-											<span class="px-2.5 py-1 rounded-md bg-slate-700/80 text-sky-300 text-xs font-medium">{lang}</span>
+							<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+								{profile.languages && profile.languages.length > 0 && (
+									<div class="space-y-2">
+										<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Languages</h3>
+										<div class="flex flex-wrap gap-2">
+											{profile.languages.map((lang) => (
+												<span class="px-2.5 py-1 rounded-md bg-slate-700/80 text-sky-300 text-xs font-medium">{lang}</span>
+											))}
+										</div>
+									</div>
+								)}
+
+								{profile.tools && profile.tools.length > 0 && (
+									<div class="space-y-2">
+										<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tools</h3>
+										<div class="flex flex-wrap gap-2">
+											{profile.tools.map((tool) => (
+												<span class="px-2.5 py-1 rounded-md bg-slate-700/80 text-emerald-300 text-xs font-medium">{tool}</span>
+											))}
+										</div>
+									</div>
+								)}
+
+								{profile.stacks && profile.stacks.length > 0 && (
+									<div class="space-y-2">
+										<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stacks</h3>
+										<div class="flex flex-wrap gap-2">
+											{profile.stacks.map((stack) => (
+												<span class="px-2.5 py-1 rounded-md bg-slate-700/80 text-indigo-300 text-xs font-medium">{stack}</span>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+
+							<div class="pt-6 border-t border-slate-700 flex flex-wrap gap-4">
+								{githubUrl && (
+									<a href={githubUrl} target="_blank" rel="noreferrer" class="btn-secondary text-sm">
+										<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+										GitHub
+									</a>
+								)}
+								{external(profile.website) && (
+									<a href={external(profile.website)!} target="_blank" rel="noreferrer" class="btn-secondary text-sm">
+										Website ↗
+									</a>
+								)}
+								{external(profile.blog) && (
+									<a href={external(profile.blog)!} target="_blank" rel="noreferrer" class="btn-secondary text-sm">
+										Blog ↗
+									</a>
+								)}
+							</div>
+						</article>
+
+						<!-- Most Active Projects Section (Podium & List) -->
+						{profile.pull_github_repos !== false && githubUsername && (
+							<section id="projects-section" class="space-y-8 bg-slate-800/50 p-6 sm:p-8 rounded-2xl border border-slate-800">
+								<div class="text-center space-y-2">
+									<h2 class="text-3xl font-extrabold text-white tracking-tight">🏆 Most Active Projects</h2>
+									<p class="text-slate-400 text-sm">Top projects automatically highlighted from GitHub activity</p>
+								</div>
+
+								<div id="podium-container">
+									{topThree.length > 0 ? (
+										<div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-4">
+											<!-- 2nd Place (Silver) -->
+											{topThree[1] && (
+												<div class="order-2 md:order-1 bg-slate-800 border-2 border-slate-400/60 rounded-2xl p-5 shadow-xl text-center space-y-3 transform md:translate-y-2">
+													<div class="inline-block px-3 py-1 rounded-full bg-slate-300 text-slate-900 font-bold text-xs uppercase tracking-wider">
+														🥈 2nd Place
+													</div>
+													<h3 class="text-lg font-bold text-white truncate">
+														<a href={topThree[1].html_url} target="_blank" rel="noreferrer" class="hover:text-sky-400">{topThree[1].name}</a>
+													</h3>
+													<p class="text-xs text-slate-400 line-clamp-2 h-8">{topThree[1].description || 'No description provided.'}</p>
+													<div class="flex justify-center gap-4 text-xs text-slate-300 pt-2 border-t border-slate-700">
+														<span>⭐ {topThree[1].stargazers_count}</span>
+														<span>🍴 {topThree[1].forks_count}</span>
+														{topThree[1].language && <span class="text-sky-400">{topThree[1].language}</span>}
+													</div>
+												</div>
+											)}
+
+											<!-- 1st Place (Gold) -->
+											{topThree[0] && (
+												<div class="order-1 md:order-2 bg-gradient-to-b from-amber-500/20 to-slate-800 border-2 border-amber-400 rounded-2xl p-6 shadow-2xl text-center space-y-3 transform md:-translate-y-2 scale-105">
+													<div class="inline-block px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider">
+														🥇 1st Place
+													</div>
+													<h3 class="text-xl font-extrabold text-white truncate">
+														<a href={topThree[0].html_url} target="_blank" rel="noreferrer" class="hover:text-amber-300">{topThree[0].name}</a>
+													</h3>
+													<p class="text-xs text-slate-300 line-clamp-2 h-8">{topThree[0].description || 'No description provided.'}</p>
+													<div class="flex justify-center gap-4 text-xs font-semibold text-slate-200 pt-2 border-t border-slate-700">
+														<span>⭐ {topThree[0].stargazers_count}</span>
+														<span>🍴 {topThree[0].forks_count}</span>
+														{topThree[0].language && <span class="text-amber-300">{topThree[0].language}</span>}
+													</div>
+												</div>
+											)}
+
+											<!-- 3rd Place (Bronze) -->
+											{topThree[2] && (
+												<div class="order-3 bg-slate-800 border-2 border-amber-700/60 rounded-2xl p-5 shadow-xl text-center space-y-3 transform md:translate-y-4">
+													<div class="inline-block px-3 py-1 rounded-full bg-amber-700 text-amber-100 font-bold text-xs uppercase tracking-wider">
+														🥉 3rd Place
+													</div>
+													<h3 class="text-lg font-bold text-white truncate">
+														<a href={topThree[2].html_url} target="_blank" rel="noreferrer" class="hover:text-sky-400">{topThree[2].name}</a>
+													</h3>
+													<p class="text-xs text-slate-400 line-clamp-2 h-8">{topThree[2].description || 'No description provided.'}</p>
+													<div class="flex justify-center gap-4 text-xs text-slate-300 pt-2 border-t border-slate-700">
+														<span>⭐ {topThree[2].stargazers_count}</span>
+														<span>🍴 {topThree[2].forks_count}</span>
+														{topThree[2].language && <span class="text-sky-400">{topThree[2].language}</span>}
+													</div>
+												</div>
+											)}
+										</div>
+									) : (
+										<p id="repos-loading-msg" class="text-center text-slate-400 py-8">Fetching GitHub repositories...</p>
+									)}
+								</div>
+
+								<!-- Detailed Repositories List -->
+								<div id="detailed-repos-list" class="space-y-4 pt-6 border-t border-slate-700/60">
+									<h3 class="text-xl font-bold text-white">All Active Projects</h3>
+									<div id="repos-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2">
+										{remainingRepos.map((repo: any) => (
+											<div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-500 transition-all">
+												<div>
+													<div class="flex items-center justify-between gap-2">
+														<a href={repo.html_url} target="_blank" rel="noreferrer" class="font-bold text-sky-400 hover:underline truncate">{repo.name}</a>
+														{repo.language && <span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-medium">{repo.language}</span>}
+													</div>
+													<p class="text-xs text-slate-400 line-clamp-2 mt-1">{repo.description || 'No description'}</p>
+												</div>
+												<div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-700/50">
+													<div class="flex gap-3">
+														<span>⭐ {repo.stargazers_count}</span>
+														<span>🍴 {repo.forks_count}</span>
+														<span>❗ {repo.open_issues_count} issues</span>
+													</div>
+													<a href={repo.html_url} target="_blank" rel="noreferrer" class="text-slate-300 hover:text-white">View ↗</a>
+												</div>
+											</div>
 										))}
 									</div>
 								</div>
-							)}
-
-							{profile.tools && profile.tools.length > 0 && (
-								<div class="space-y-2">
-									<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tools</h3>
-									<div class="flex flex-wrap gap-2">
-										{profile.tools.map((tool) => (
-											<span class="px-2.5 py-1 rounded-md bg-slate-700/80 text-emerald-300 text-xs font-medium">{tool}</span>
-										))}
-									</div>
-								</div>
-							)}
-
-							{profile.stacks && profile.stacks.length > 0 && (
-								<div class="space-y-2">
-									<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stacks</h3>
-									<div class="flex flex-wrap gap-2">
-										{profile.stacks.map((stack) => (
-											<span class="px-2.5 py-1 rounded-md bg-slate-700/80 text-indigo-300 text-xs font-medium">{stack}</span>
-										))}
-									</div>
-								</div>
-							)}
-						</div>
-
-						<div class="pt-6 border-t border-slate-700 flex flex-wrap gap-4">
-							{githubUrl && (
-								<a href={githubUrl} target="_blank" rel="noreferrer" class="btn-secondary text-sm">
-									<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-									GitHub
-								</a>
-							)}
-							{external(profile.website) && (
-								<a href={external(profile.website)!} target="_blank" rel="noreferrer" class="btn-secondary text-sm">
-									Website ↗
-								</a>
-							)}
-							{external(profile.blog) && (
-								<a href={external(profile.blog)!} target="_blank" rel="noreferrer" class="btn-secondary text-sm">
-									Blog ↗
-								</a>
-							)}
-						</div>
-					</article>
+							</section>
+						)}
+					</div>
 				) : (
 					<div id="fallback-status" class="text-center py-20 space-y-4">
 						<h2 class="text-2xl font-bold text-slate-300">Loading Profile...</h2>
@@ -126,6 +245,109 @@ const githubUrl = profile?.github
 
 	const container = document.querySelector<HTMLElement>('#profile-container');
 	const isInitialFound = container?.dataset.initialFound === 'true';
+
+	async function loadGitHubProjects(username: string) {
+		const podiumContainer = document.querySelector<HTMLElement>('#podium-container');
+		const reposGrid = document.querySelector<HTMLElement>('#repos-grid');
+		const loadingMsg = document.querySelector<HTMLElement>('#repos-loading-msg');
+
+		if (!username || !podiumContainer) return;
+
+		try {
+			const res = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=12`);
+			if (!res.ok) {
+				if (loadingMsg) loadingMsg.textContent = 'Could not load GitHub projects.';
+				return;
+			}
+			const repos = await res.json();
+			if (!Array.isArray(repos) || repos.length === 0) {
+				if (loadingMsg) loadingMsg.textContent = 'No public GitHub repositories found.';
+				return;
+			}
+
+			const activeRepos = repos
+				.filter((r: any) => !r.fork)
+				.sort((a: any, b: any) => (b.stargazers_count + b.forks_count * 2) - (a.stargazers_count + a.forks_count * 2));
+
+			const topThree = activeRepos.slice(0, 3);
+			const remaining = activeRepos.slice(3);
+
+			if (topThree.length > 0) {
+				podiumContainer.innerHTML = `
+					<div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-4">
+						${topThree[1] ? `
+							<div class="order-2 md:order-1 bg-slate-800 border-2 border-slate-400/60 rounded-2xl p-5 shadow-xl text-center space-y-3 transform md:translate-y-2">
+								<div class="inline-block px-3 py-1 rounded-full bg-slate-300 text-slate-900 font-bold text-xs uppercase tracking-wider">🥈 2nd Place</div>
+								<h3 class="text-lg font-bold text-white truncate"><a href="${topThree[1].html_url}" target="_blank" rel="noreferrer" class="hover:text-sky-400">${topThree[1].name}</a></h3>
+								<p class="text-xs text-slate-400 line-clamp-2 h-8">${topThree[1].description || 'No description provided.'}</p>
+								<div class="flex justify-center gap-4 text-xs text-slate-300 pt-2 border-t border-slate-700">
+									<span>⭐ ${topThree[1].stargazers_count}</span>
+									<span>🍴 ${topThree[1].forks_count}</span>
+									${topThree[1].language ? `<span class="text-sky-400">${topThree[1].language}</span>` : ''}
+								</div>
+							</div>
+						` : ''}
+
+						${topThree[0] ? `
+							<div class="order-1 md:order-2 bg-gradient-to-b from-amber-500/20 to-slate-800 border-2 border-amber-400 rounded-2xl p-6 shadow-2xl text-center space-y-3 transform md:-translate-y-2 scale-105">
+								<div class="inline-block px-3 py-1 rounded-full bg-amber-400 text-slate-950 font-bold text-xs uppercase tracking-wider">🥇 1st Place</div>
+								<h3 class="text-xl font-extrabold text-white truncate"><a href="${topThree[0].html_url}" target="_blank" rel="noreferrer" class="hover:text-amber-300">${topThree[0].name}</a></h3>
+								<p class="text-xs text-slate-300 line-clamp-2 h-8">${topThree[0].description || 'No description provided.'}</p>
+								<div class="flex justify-center gap-4 text-xs font-semibold text-slate-200 pt-2 border-t border-slate-700">
+									<span>⭐ ${topThree[0].stargazers_count}</span>
+									<span>🍴 ${topThree[0].forks_count}</span>
+									${topThree[0].language ? `<span class="text-amber-300">${topThree[0].language}</span>` : ''}
+								</div>
+							</div>
+						` : ''}
+
+						${topThree[2] ? `
+							<div class="order-3 bg-slate-800 border-2 border-amber-700/60 rounded-2xl p-5 shadow-xl text-center space-y-3 transform md:translate-y-4">
+								<div class="inline-block px-3 py-1 rounded-full bg-amber-700 text-amber-100 font-bold text-xs uppercase tracking-wider">🥉 3rd Place</div>
+								<h3 class="text-lg font-bold text-white truncate"><a href="${topThree[2].html_url}" target="_blank" rel="noreferrer" class="hover:text-sky-400">${topThree[2].name}</a></h3>
+								<p class="text-xs text-slate-400 line-clamp-2 h-8">${topThree[2].description || 'No description provided.'}</p>
+								<div class="flex justify-center gap-4 text-xs text-slate-300 pt-2 border-t border-slate-700">
+									<span>⭐ ${topThree[2].stargazers_count}</span>
+									<span>🍴 ${topThree[2].forks_count}</span>
+									${topThree[2].language ? `<span class="text-sky-400">${topThree[2].language}</span>` : ''}
+								</div>
+							</div>
+						` : ''}
+					</div>
+				`;
+			}
+
+			if (reposGrid) {
+				reposGrid.innerHTML = remaining.map((repo: any) => `
+					<div class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-4 flex flex-col justify-between space-y-3 hover:border-slate-500 transition-all">
+						<div>
+							<div class="flex items-center justify-between gap-2">
+								<a href="${repo.html_url}" target="_blank" rel="noreferrer" class="font-bold text-sky-400 hover:underline truncate">${repo.name}</a>
+								${repo.language ? `<span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-medium">${repo.language}</span>` : ''}
+							</div>
+							<p class="text-xs text-slate-400 line-clamp-2 mt-1">${repo.description || 'No description'}</p>
+						</div>
+						<div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-700/50">
+							<div class="flex gap-3">
+								<span>⭐ ${repo.stargazers_count}</span>
+								<span>🍴 ${repo.forks_count}</span>
+								<span>❗ ${repo.open_issues_count} issues</span>
+							</div>
+							<a href="${repo.html_url}" target="_blank" rel="noreferrer" class="text-slate-300 hover:text-white">View ↗</a>
+						</div>
+					</div>
+				`).join('');
+			}
+		} catch (e) {
+			if (loadingMsg) loadingMsg.textContent = 'Failed to fetch repositories.';
+		}
+	}
+
+	// Always trigger client-side repo fetch if needed or if loading dynamically
+	const initialGithubUser = container?.dataset.githubUsername;
+	if (initialGithubUser) {
+		loadGitHubProjects(initialGithubUser);
+	}
 
 	if (!isInitialFound && container && isSupabaseConfigured) {
 		async function fetchClientProfile() {
@@ -163,7 +385,8 @@ const githubUrl = profile?.github
 		function renderProfile(p: any) {
 			if (!container) return;
 			const external = (url?: string | null) => url ? (url.startsWith('http') ? url : `https://${url}`) : null;
-			const githubUrl = p.github ? (p.github.startsWith('http') ? p.github : `https://github.com/${p.github.replace(/^@/, '')}`) : null;
+			const ghUser = p.github ? p.github.replace(/^https?:\/\/github\.com\//i, '').replace(/^@/, '').split('/')[0] : null;
+			const githubUrl = ghUser ? `https://github.com/${ghUser}` : null;
 
 			const createBadges = (title: string, list: string[] | null, colorClass: string) => {
 				if (!list || list.length === 0) return '';
@@ -171,35 +394,59 @@ const githubUrl = profile?.github
 					<div class="space-y-2">
 						<h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">${title}</h3>
 						<div class="flex flex-wrap gap-2">
-							${list.map(item => `<span class="px-2.5 py-1 rounded-md bg-slate-700/80 ${colorClass} text-xs font-medium">${item}</span>`).join('')}
+							${list.map((item: string) => `<span class="px-2.5 py-1 rounded-md bg-slate-700/80 ${colorClass} text-xs font-medium">${item}</span>`).join('')}
 						</div>
 					</div>
 				`;
 			};
 
 			container.innerHTML = `
-				<article class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8">
-					<div class="space-y-3 border-b border-slate-700 pb-6">
-						<div class="flex flex-wrap items-center justify-between gap-4">
-							<h1 class="text-3xl sm:text-4xl font-extrabold text-white">${p.name || 'Developer'}</h1>
-							${p.skill_level ? `<span class="badge text-sm py-1 px-3">${p.skill_level}</span>` : ''}
+				<div class="space-y-10">
+					<article class="bg-slate-800/90 border border-slate-700 rounded-2xl p-6 sm:p-10 shadow-2xl space-y-8">
+						<div class="space-y-3 border-b border-slate-700 pb-6">
+							<div class="flex flex-wrap items-center justify-between gap-4">
+								<h1 class="text-3xl sm:text-4xl font-extrabold text-white">${p.name || 'Developer'}</h1>
+								${p.skill_level ? `<span class="badge text-sm py-1 px-3">${p.skill_level}</span>` : ''}
+							</div>
+							${p.bio ? `<p class="text-slate-300 text-lg leading-relaxed">${p.bio}</p>` : ''}
 						</div>
-						${p.bio ? `<p class="text-slate-300 text-lg leading-relaxed">${p.bio}</p>` : ''}
-					</div>
 
-					<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-						${createBadges('Languages', p.languages, 'text-sky-300')}
-						${createBadges('Tools', p.tools, 'text-emerald-300')}
-						${createBadges('Stacks', p.stacks, 'text-indigo-300')}
-					</div>
+						<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+							${createBadges('Languages', p.languages, 'text-sky-300')}
+							${createBadges('Tools', p.tools, 'text-emerald-300')}
+							${createBadges('Stacks', p.stacks, 'text-indigo-300')}
+						</div>
 
-					<div class="pt-6 border-t border-slate-700 flex flex-wrap gap-4">
-						${githubUrl ? `<a href="${githubUrl}" target="_blank" rel="noreferrer" class="btn-secondary text-sm">GitHub</a>` : ''}
-						${external(p.website) ? `<a href="${external(p.website)}" target="_blank" rel="noreferrer" class="btn-secondary text-sm">Website ↗</a>` : ''}
-						${external(p.blog) ? `<a href="${external(p.blog)}" target="_blank" rel="noreferrer" class="btn-secondary text-sm">Blog ↗</a>` : ''}
-					</div>
-				</article>
+						<div class="pt-6 border-t border-slate-700 flex flex-wrap gap-4">
+							${githubUrl ? `<a href="${githubUrl}" target="_blank" rel="noreferrer" class="btn-secondary text-sm">GitHub</a>` : ''}
+							${external(p.website) ? `<a href="${external(p.website)}" target="_blank" rel="noreferrer" class="btn-secondary text-sm">Website ↗</a>` : ''}
+							${external(p.blog) ? `<a href="${external(p.blog)}" target="_blank" rel="noreferrer" class="btn-secondary text-sm">Blog ↗</a>` : ''}
+						</div>
+					</article>
+
+					${p.pull_github_repos !== false && ghUser ? `
+						<section id="projects-section" class="space-y-8 bg-slate-800/50 p-6 sm:p-8 rounded-2xl border border-slate-800">
+							<div class="text-center space-y-2">
+								<h2 class="text-3xl font-extrabold text-white tracking-tight">🏆 Most Active Projects</h2>
+								<p class="text-slate-400 text-sm">Top projects automatically highlighted from GitHub activity</p>
+							</div>
+
+							<div id="podium-container">
+								<p id="repos-loading-msg" class="text-center text-slate-400 py-8">Fetching GitHub repositories...</p>
+							</div>
+
+							<div id="detailed-repos-list" class="space-y-4 pt-6 border-t border-slate-700/60">
+								<h3 class="text-xl font-bold text-white">All Active Projects</h3>
+								<div id="repos-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto pr-2"></div>
+							</div>
+						</section>
+					` : ''}
+				</div>
 			`;
+
+			if (p.pull_github_repos !== false && ghUser) {
+				loadGitHubProjects(ghUser);
+			}
 		}
 
 		fetchClientProfile();

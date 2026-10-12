@@ -1,5 +1,6 @@
 ---
 import ProfileCard from '../components/ProfileCard.astro';
+import HeaderNav from '../components/HeaderNav.astro';
 import { createClient, isSupabaseConfigured } from '../lib/supabase';
 import '../styles/global.css';
 
@@ -23,12 +24,7 @@ const initialStatus = error?.message ?? (!isSupabaseConfigured ? 'Supabase is no
 				<a href={import.meta.env.BASE_URL} class="text-xl font-bold bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">
 					Dev Portal
 				</a>
-				<nav aria-label="Main navigation" class="flex items-center gap-6">
-					<a href={`${import.meta.env.BASE_URL}explore/`} class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Explore</a>
-					<a href={`${import.meta.env.BASE_URL}dashboard/`} class="text-slate-300 hover:text-white transition-colors text-sm font-medium">Dashboard</a>
-					<a href={`${import.meta.env.BASE_URL}login/`} class="btn-secondary text-sm">Log in</a>
-					<a href={`${import.meta.env.BASE_URL}signup/`} class="btn-primary text-sm">Sign up</a>
-				</nav>
+				<HeaderNav />
 			</div>
 		</header>
 
